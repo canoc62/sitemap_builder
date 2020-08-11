@@ -18,9 +18,10 @@ type Builder struct {
 	BaseUrl string
 	UrlList *[]string
 	seen map[string]bool
+	depth int
 }
 
-func NewBuilder(url string) (Builder, error) {
+func NewBuilder(url string, depth int) (Builder, error) {
 	baseUrl, err := getBaseUrl(url)
 
 	if err != nil {
@@ -30,7 +31,7 @@ func NewBuilder(url string) (Builder, error) {
 	urlList := []string{}
 	seen := make(map[string]bool)
 
-	return Builder { baseUrl, &urlList, seen }, nil
+	return Builder { baseUrl, &urlList, seen, depth }, nil
 }
 
 func getBaseUrl(urlArg string) (string, error) {
@@ -57,9 +58,16 @@ func (builder Builder) Build() []string {
 	var urlQueue visitedQueue
 	urlQueue = append(urlQueue, builder.BaseUrl)
 
-	for len(urlQueue) > 0 {
-		currUrl := urlQueue.dequeue()
-		builder.createSitemapList(currUrl, &urlQueue)
+	counter := builder.depth
+
+	for len(urlQueue) > 0 && counter > 0 {
+		counter--
+		levelLength := len(urlQueue)
+		for levelLength > 0 {
+			currUrl := urlQueue.dequeue()
+			builder.createSitemapList(currUrl, &urlQueue)
+			levelLength--
+		}
 	}
 
 	return *builder.UrlList
@@ -99,7 +107,7 @@ func (builder Builder) createSitemapList(url string, urlQueue *visitedQueue) {
 		log.Fatalln(err)
 		return
 	}
-	hrefs := filterLinks(links, builder.BaseUrl)
+	hrefs := filterLinks(&links, builder.BaseUrl)
 
 	for _, href := range(hrefs) {
 		if _, ok := builder.seen[href]; !ok {
@@ -114,10 +122,10 @@ func validateHTMLResponse(respHeader string) bool {
 	return strings.HasPrefix(respHeader, "text/html")
 }
 
-func filterLinks(links parser.Links, baseUrl string) []string {
+func filterLinks(links *parser.Links, baseUrl string) []string {
 	hrefs := []string{}
 
-	for _, link := range(links) {
+	for _, link := range(*links) {
 		switch {
 		case strings.HasPrefix(link.Href, "/"):
 			hrefs = append(hrefs, baseUrl+link.Href)

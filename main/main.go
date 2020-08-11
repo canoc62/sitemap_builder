@@ -11,10 +11,11 @@ import (
 )
 
 func main() {
-	var url_arg = flag.String("url", "https://spacejam.com/", "usage: url to generate sitemap for")
+	var urlArg = flag.String("url", "https://spacejam.com/", "usage: url to generate sitemap for")
+	var depthArg = flag.Int("depth", 3, "usage: number of levels of links to generate sitemap")
 	flag.Parse()
 
-	builder, err := sitemap_builder.NewBuilder(*url_arg)
+	builder, err := sitemap_builder.NewBuilder(*urlArg, *depthArg)
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(1)
