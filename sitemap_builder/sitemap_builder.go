@@ -1,6 +1,7 @@
 package sitemap_builder
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,8 @@ import (
 	"github.com/html_link_parser/parser"
 )
 
+const xmlns = "http://www.sitemap.org/schemas/sitemap/0.9"
+
 type visitedQueue []string
 
 type Builder struct {
@@ -19,6 +22,15 @@ type Builder struct {
 	UrlList *[]string
 	seen map[string]bool
 	depth int
+}
+
+type loc struct {
+	Href string `xml:"loc"`
+}
+
+type urlset struct {
+	Urls []loc `xml:"url"`
+	Xmlns string `xml:"xmlns,attr"`
 }
 
 func NewBuilder(url string, depth int) (Builder, error) {
@@ -54,7 +66,25 @@ func getBaseUrl(urlArg string) (string, error) {
 	return base, nil
 }
 
-func (builder Builder) Build() []string {
+func ToXml(urlList *[]string) error {
+	xmlData := urlset {
+		Xmlns: xmlns,
+	}
+	for _, href := range(*urlList) {
+		xmlData.Urls = append(xmlData.Urls, loc{href})
+	}
+
+	enc := xml.NewEncoder(os.Stdout)
+	enc.Indent("", "  ")
+	fmt.Print(xml.Header)
+	if err := enc.Encode(xmlData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (builder Builder) Build() *[]string {
 	var urlQueue visitedQueue
 	urlQueue = append(urlQueue, builder.BaseUrl)
 
@@ -70,7 +100,7 @@ func (builder Builder) Build() []string {
 		}
 	}
 
-	return *builder.UrlList
+	return builder.UrlList
 }
 
 func (urlQueue *visitedQueue) dequeue() string {
